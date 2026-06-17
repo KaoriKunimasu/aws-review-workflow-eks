@@ -1,0 +1,20 @@
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+    ports:
+      - "8000:8000"
+
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      WORKFLOW_TABLE_NAME: review-workflow-local
+      AWS_REGION: ap-southeast-2
+      DYNAMODB_ENDPOINT_URL: http://dynamodb:8000
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      LOG_LEVEL: INFO
+    depends_on:
+      - dynamodb
