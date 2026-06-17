@@ -1,0 +1,58 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node
+node_modules/
+dist/
+build/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Misc
+tmp/
+.cache/
+
+app/functions/.dist/*
+!app/functions/.dist/.gitkeep
+app/functions/*.zip
+
+infra/environments/dev/*.zip
+
+# Terraform variable files
+*.tfvars
+*.tfvars.json
+!*.tfvars.example

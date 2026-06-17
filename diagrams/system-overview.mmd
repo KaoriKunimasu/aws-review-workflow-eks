@@ -1,0 +1,51 @@
+flowchart LR
+    subgraph Client
+        User[User]
+    end
+
+    subgraph Frontend
+        CF[CloudFront]
+        S3[S3 Static Frontend]
+    end
+
+    subgraph Auth
+        Cognito[Cognito User Pool]
+    end
+
+    subgraph API Layer
+        APIGW[API Gateway HTTP API]
+        JWTAuth[JWT Authorizer]
+    end
+
+    subgraph Compute
+        Lambda[Lambda Functions]
+    end
+
+    subgraph Data
+        DDB[DynamoDB]
+    end
+
+    subgraph Observability
+        CW[CloudWatch]
+        SNS[SNS Notifications]
+    end
+
+    subgraph CI/CD
+        GHA[GitHub Actions]
+        OIDC[GitHub OIDC]
+        TF[Terraform]
+    end
+
+    User --> CF
+    CF --> S3
+    User --> Cognito
+    User --> APIGW
+    APIGW --> JWTAuth
+    JWTAuth --> Cognito
+    APIGW --> Lambda
+    Lambda --> DDB
+    Lambda --> CW
+    APIGW --> CW
+    CW --> SNS
+    GHA --> OIDC
+    OIDC --> TF

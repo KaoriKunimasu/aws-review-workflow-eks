@@ -1,0 +1,345 @@
+openapi: 3.0.3
+info:
+  title: Review Workflow API
+  version: 0.1.0
+  description: Initial API contract for the review workflow application.
+
+servers:
+  - url: https://api.example.com
+    description: Placeholder URL
+
+tags:
+  - name: Auth
+  - name: Requests
+  - name: Dashboard
+
+paths:
+  /auth/profile:
+    get:
+      tags:
+        - Auth
+      summary: Get current user profile
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+
+  /requests:
+    get:
+      tags:
+        - Requests
+      summary: List review requests
+      operationId: listRequests
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum:
+              - draft
+              - submitted
+              - in_review
+              - approved
+              - rejected
+              - archived
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: List of review requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListRequestsResponse'
+
+    post:
+      tags:
+        - Requests
+      summary: Create a review request
+      operationId: createRequest
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequestInput'
+      responses:
+        '201':
+          description: Review request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+
+  /requests/{requestId}:
+    get:
+      tags:
+        - Requests
+      summary: Get a review request by ID
+      operationId: getRequest
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review request details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+        '404':
+          description: Review request not found
+
+  /requests/{requestId}/status:
+    patch:
+      tags:
+        - Requests
+      summary: Update request status
+      operationId: updateRequestStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusInput'
+      responses:
+        '200':
+          description: Review request updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+
+  /dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard summary
+      operationId: getDashboardSummary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ProfileResponse:
+      type: object
+      required:
+        - userId
+        - email
+        - role
+      properties:
+        userId:
+          type: string
+          example: user-123
+        email:
+          type: string
+          format: email
+          example: kaori@example.com
+        role:
+          type: string
+          example: requester
+
+    ReviewRequest:
+      type: object
+      required:
+        - requestId
+        - title
+        - requestType
+        - status
+        - createdBy
+        - createdAt
+        - updatedAt
+      properties:
+        requestId:
+          type: string
+          example: req-001
+        title:
+          type: string
+          example: Review API terminology
+        requestType:
+          type: string
+          enum:
+            - term
+            - document
+            - change
+        sourceLanguage:
+          type: string
+          example: en
+        targetLanguage:
+          type: string
+          example: ja
+        sourceText:
+          type: string
+          example: authorizer
+        targetText:
+          type: string
+          example: authorizer
+        category:
+          type: string
+          example: security
+        status:
+          type: string
+          enum:
+            - draft
+            - submitted
+            - in_review
+            - approved
+            - rejected
+            - archived
+        reviewerNote:
+          type: string
+          nullable: true
+          example: Keep the term consistent across the UI and documentation.
+        createdBy:
+          type: string
+          example: kaori@example.com
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-06-01T09:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-06-01T10:00:00Z
+
+    CreateRequestInput:
+      type: object
+      required:
+        - title
+        - requestType
+        - sourceLanguage
+        - targetLanguage
+        - sourceText
+      properties:
+        title:
+          type: string
+          example: Review API Gateway terminology
+        requestType:
+          type: string
+          enum:
+            - term
+            - document
+            - change
+        sourceLanguage:
+          type: string
+          example: en
+        targetLanguage:
+          type: string
+          example: ja
+        sourceText:
+          type: string
+          example: authorizer
+        targetText:
+          type: string
+          example: authorizer
+        category:
+          type: string
+          example: security
+
+    UpdateStatusInput:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - draft
+            - submitted
+            - in_review
+            - approved
+            - rejected
+            - archived
+        reviewerNote:
+          type: string
+          example: Approved after terminology review.
+
+    RequestResponse:
+      type: object
+      required:
+        - item
+      properties:
+        item:
+          $ref: '#/components/schemas/ReviewRequest'
+
+    ListRequestsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewRequest'
+
+    DashboardSummaryResponse:
+      type: object
+      required:
+        - total
+        - draft
+        - submitted
+        - inReview
+        - approved
+        - rejected
+      properties:
+        total:
+          type: integer
+          example: 12
+        draft:
+          type: integer
+          example: 2
+        submitted:
+          type: integer
+          example: 3
+        inReview:
+          type: integer
+          example: 4
+        approved:
+          type: integer
+          example: 2
+        rejected:
+          type: integer
+          example: 1

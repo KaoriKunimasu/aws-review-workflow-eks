@@ -1,0 +1,71 @@
+project_name = "review-workflow"
+environment  = "dev"
+aws_region   = "ap-southeast-2"
+
+allowed_account_ids = [
+  "515241425905",
+]
+
+cognito_callback_urls = [
+  "http://localhost:5173/login",
+]
+
+cognito_logout_urls = [
+  "http://localhost:5173/login",
+]
+
+cognito_domain_prefix = "review-workflow-dev-515241425905"
+
+dynamodb_billing_mode                   = "PAY_PER_REQUEST"
+dynamodb_point_in_time_recovery_enabled = true
+dynamodb_deletion_protection_enabled    = false
+dynamodb_table_class                    = "STANDARD"
+dynamodb_stream_enabled                 = false
+dynamodb_stream_view_type               = "NEW_AND_OLD_IMAGES"
+dynamodb_ttl_enabled                    = false
+dynamodb_ttl_attribute_name             = "expiresAt"
+
+lambda_runtime               = "python3.12"
+lambda_architectures         = ["x86_64"]
+lambda_timeout_seconds       = 10
+lambda_memory_size           = 256
+lambda_log_retention_in_days = 14
+lambda_log_level             = "INFO"
+
+api_stage_name            = "$default"
+api_auto_deploy           = true
+api_log_retention_in_days = 14
+
+api_cors_allow_origins = [
+  "http://localhost:5173",
+]
+
+api_cors_allow_methods = [
+  "GET",
+  "POST",
+  "PATCH",
+  "OPTIONS",
+]
+
+api_cors_allow_headers = [
+  "authorization",
+  "content-type",
+]
+
+api_cors_expose_headers = []
+
+api_cors_allow_credentials = false
+api_cors_max_age           = 0
+
+api_enable_jwt_authorizer = true
+
+api_jwt_authorizer_name = "cognito-jwt-authorizer"
+
+api_jwt_identity_source = [
+  "$request.header.Authorization",
+]
+
+api_5xx_alarm_threshold     = 1
+lambda_error_alarm_threshold = 1
+alarm_period_seconds        = 60
+alarm_evaluation_periods    = 1
