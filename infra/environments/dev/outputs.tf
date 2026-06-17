@@ -142,3 +142,17 @@ output "api_integration_ids" {
   description = "Map of API integration IDs keyed by route key."
   value       = module.api.integration_ids
 }
+output "eks_cluster_name" {
+  description = "EKS cluster name."
+  value       = module.eks.cluster_name
+}
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for the review API image."
+  value       = aws_ecr_repository.review_api.repository_url
+}
+
+output "configure_kubectl" {
+  description = "Command to update local kubeconfig for this cluster."
+  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
+}
