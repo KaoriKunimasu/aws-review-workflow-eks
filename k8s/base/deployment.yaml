@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-api
+  labels:
+    app: review-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: review-api
+  template:
+    metadata:
+      labels:
+        app: review-api
+    spec:
+      containers:
+        - name: review-api
+          # Replaced with the ECR image URI before deploying to EKS.
+          image: review-api:local
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: review-api-config
+          # Liveness/readiness both hit /health (see app/api/main.py).
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
