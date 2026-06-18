@@ -4,6 +4,7 @@ resource "aws_ecr_repository" "review_api" {
 
   # MUTABLE so CI can push a moving tag (e.g. latest) during dev.
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
