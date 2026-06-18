@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest -q
+
+  docker:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build only (no push); confirms the image still builds on every change.
+      - name: Build image
+        run: docker build -t review-api:ci .
+
+  terraform:
+    name: Terraform format and validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/environments/dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.0"
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+        working-directory: .
+
+      # init without a backend so validate can run without AWS credentials.
+      - name: Init (no backend)
+        run: terraform init -backend=false
+
+      - name: Validate
+        run: terraform validate
+
+  kustomize:
+    name: Kustomize build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # kubectl ships with kustomize; build the overlay to catch manifest errors.
+      - name: Build EKS overlay
+        run: kubectl kustomize k8s/overlays/eks
