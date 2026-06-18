@@ -14,6 +14,7 @@ spec:
       labels:
         app: review-api
     spec:
+      serviceAccountName: review-api
       containers:
         - name: review-api
           # Replaced with the ECR image URI before deploying to EKS.
