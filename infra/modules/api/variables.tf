@@ -98,11 +98,6 @@ variable "jwt_authorizer_audience" {
   description = "Audience values for the JWT authorizer."
   type        = list(string)
   default     = []
-
-  validation {
-    condition     = var.create_jwt_authorizer ? length(var.jwt_authorizer_audience) > 0 : true
-    error_message = "jwt_authorizer_audience must not be empty when create_jwt_authorizer is true."
-  }
 }
 
 variable "jwt_authorizer_issuer" {
@@ -110,10 +105,6 @@ variable "jwt_authorizer_issuer" {
   type        = string
   default     = null
 
-  validation {
-    condition     = var.create_jwt_authorizer ? var.jwt_authorizer_issuer != null && trimspace(var.jwt_authorizer_issuer) != "" : true
-    error_message = "jwt_authorizer_issuer must be set when create_jwt_authorizer is true."
-  }
 }
 
 variable "routes" {
@@ -133,14 +124,6 @@ variable "routes" {
       contains(["NONE", "JWT", "AWS_IAM", "CUSTOM"], route.authorization_type)
     ])
     error_message = "Each route authorization_type must be NONE, JWT, AWS_IAM, or CUSTOM."
-  }
-
-  validation {
-    condition = alltrue([
-      for route_key, route in var.routes :
-      route.authorization_type != "JWT" || route.authorizer_id != null || var.create_jwt_authorizer
-    ])
-    error_message = "A JWT route must provide authorizer_id or enable create_jwt_authorizer."
   }
 
   validation {
