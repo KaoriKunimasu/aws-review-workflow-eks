@@ -156,3 +156,8 @@ output "configure_kubectl" {
   description = "Command to update local kubeconfig for this cluster."
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
 }
+
+output "review_api_irsa_role_arn" {
+  description = "IAM role ARN for the review-api ServiceAccount (IRSA)."
+  value       = module.review_api_irsa.iam_role_arn
+}
