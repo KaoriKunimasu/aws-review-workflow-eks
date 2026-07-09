@@ -33,7 +33,8 @@ module "eks" {
   cluster_name    = local.name_prefix
   cluster_version = "1.31"
 
-  cluster_endpoint_public_access = true
+  cluster_endpoint_public_access       = true
+  cluster_endpoint_public_access_cidrs = var.eks_cluster_endpoint_public_access_cidrs
 
   # Grant the Terraform-running principal admin via an access entry
   # (access entries are recommended over the deprecated aws-auth ConfigMap).

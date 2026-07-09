@@ -291,3 +291,18 @@ variable "alarm_evaluation_periods" {
   type        = number
   default     = 1
 }
+
+variable "eks_cluster_endpoint_public_access_cidrs" {
+  description = <<-EOT
+    CIDR blocks allowed to reach the EKS public API endpoint. Must be set
+    explicitly (e.g. your workstation's IP as a /32) before applying;
+    there is no permissive default so the endpoint is never left open to
+    0.0.0.0/0 by accident.
+  EOT
+  type        = list(string)
+
+  validation {
+    condition     = length(var.eks_cluster_endpoint_public_access_cidrs) > 0
+    error_message = "eks_cluster_endpoint_public_access_cidrs must list at least one CIDR block; do not default this to 0.0.0.0/0."
+  }
+}
