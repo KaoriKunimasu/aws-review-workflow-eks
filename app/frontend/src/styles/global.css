@@ -366,7 +366,7 @@ textarea {
   text-transform: capitalize;
 }
 
-.status-badge--submitted {
+.status-badge--open {
   background: #dbeafe;
   color: #1d4ed8;
 }
