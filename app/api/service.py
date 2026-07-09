@@ -1,3 +1,5 @@
+import base64
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -7,6 +9,16 @@ from app.api.db import get_table
 
 
 ALLOWED_STATUSES = {"OPEN", "IN_REVIEW", "APPROVED", "REJECTED"}
+
+
+def _encode_cursor(last_evaluated_key: dict) -> str:
+    encoded = json.dumps(last_evaluated_key).encode("utf-8")
+    return base64.urlsafe_b64encode(encoded).decode("utf-8")
+
+
+def _decode_cursor(cursor: str) -> dict:
+    decoded = base64.urlsafe_b64decode(cursor.encode("utf-8"))
+    return json.loads(decoded)
 
 
 class ServiceError(Exception):
@@ -81,14 +93,21 @@ def create_review(payload: dict, created_by: str) -> dict:
     return _to_item(item)
 
 
-def list_reviews(limit: int = 20) -> dict:
+def list_reviews(limit: int = 20, cursor: str | None = None) -> dict:
     """Ported from list_requests/handler.py."""
     if limit < 1 or limit > 100:
         raise ServiceError(400, "limit must be between 1 and 100.")
 
+    scan_kwargs = {"Limit": limit}
+    if cursor is not None:
+        try:
+            scan_kwargs["ExclusiveStartKey"] = _decode_cursor(cursor)
+        except (ValueError, json.JSONDecodeError):
+            raise ServiceError(400, "cursor is invalid.")
+
     table = get_table()
     try:
-        response = table.scan(Limit=limit)
+        response = table.scan(**scan_kwargs)
     except ClientError:
         raise ServiceError(500, "Failed to list workflow requests.")
 
@@ -96,10 +115,13 @@ def list_reviews(limit: int = 20) -> dict:
     # Newest first, matching the original handler behavior.
     items.sort(key=lambda i: i.get("createdAt") or "", reverse=True)
 
+    last_evaluated_key = response.get("LastEvaluatedKey")
+
     return {
         "items": items,
         "count": len(items),
-        "hasMore": "LastEvaluatedKey" in response,
+        "hasMore": last_evaluated_key is not None,
+        "cursor": _encode_cursor(last_evaluated_key) if last_evaluated_key else None,
     }
 
 

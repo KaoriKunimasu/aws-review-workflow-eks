@@ -13,6 +13,7 @@ export type ListRequestsResponse = {
   items: WorkflowRequest[];
   count: number;
   hasMore: boolean;
+  cursor?: string;
 };
 
 export type CreateRequestPayload = {

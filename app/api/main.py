@@ -33,8 +33,11 @@ def create_review(
 
 
 @app.get("/reviews")
-def list_reviews(limit: int = Query(default=20, ge=1, le=100)):
-    return service.list_reviews(limit)
+def list_reviews(
+    limit: int = Query(default=20, ge=1, le=100),
+    cursor: str | None = Query(default=None),
+):
+    return service.list_reviews(limit, cursor)
 
 
 @app.get("/reviews/{request_id}")
