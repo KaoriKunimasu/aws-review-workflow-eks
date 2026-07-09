@@ -6,7 +6,8 @@ resources:
 
 images:
   - name: review-api
-    newName: 515241425905.dkr.ecr.ap-southeast-2.amazonaws.com/review-workflow-dev-review-api
+    # Replace with the ECR repository URL from `terraform output` before applying.
+    newName: 123456789012.dkr.ecr.ap-southeast-2.amazonaws.com/review-workflow-dev-review-api
     newTag: v1
 
 patches:
@@ -19,4 +20,5 @@ patches:
       metadata:
         name: review-api
         annotations:
-          eks.amazonaws.com/role-arn: arn:aws:iam::515241425905:role/review-workflow-dev-review-api-irsa
+          # Replace with the IRSA role ARN from `terraform output` before applying.
+          eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/review-workflow-dev-review-api-irsa

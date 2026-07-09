@@ -3,7 +3,7 @@ environment  = "dev"
 aws_region   = "ap-southeast-2"
 
 allowed_account_ids = [
-  "515241425905",
+  "123456789012",
 ]
 
 cognito_callback_urls = [
@@ -14,7 +14,7 @@ cognito_logout_urls = [
   "http://localhost:5173/login",
 ]
 
-cognito_domain_prefix = "review-workflow-dev-515241425905"
+cognito_domain_prefix = "review-workflow-dev-123456789012"
 
 dynamodb_billing_mode                   = "PAY_PER_REQUEST"
 dynamodb_point_in_time_recovery_enabled = true

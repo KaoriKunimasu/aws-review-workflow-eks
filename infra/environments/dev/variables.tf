@@ -24,7 +24,7 @@ variable "aws_region" {
 variable "allowed_account_ids" {
   description = "AWS account IDs allowed for provider authentication."
   type        = list(string)
-  default     = ["515241425905"]
+  default     = ["123456789012"]
 }
 
 variable "cognito_callback_urls" {
@@ -42,7 +42,7 @@ variable "cognito_logout_urls" {
 variable "cognito_domain_prefix" {
   description = "Cognito hosted UI domain prefix for the dev environment."
   type        = string
-  default     = "review-workflow-dev-515241425905"
+  default     = "review-workflow-dev-123456789012"
 }
 
 variable "dynamodb_billing_mode" {

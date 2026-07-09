@@ -45,7 +45,7 @@ module "list_requests_function" {
         "dynamodb:Scan",
       ]
       resources = [
-        "arn:aws:dynamodb:ap-southeast-2:515241425905:table/review-workflow-dev-workflow",
+        "arn:aws:dynamodb:ap-southeast-2:123456789012:table/review-workflow-dev-workflow",
       ]
     }
   ]
