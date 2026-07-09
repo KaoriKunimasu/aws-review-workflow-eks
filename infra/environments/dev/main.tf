@@ -99,13 +99,10 @@ module "list_requests_function" {
       sid    = "ReadWorkflowTable"
       effect = "Allow"
       actions = [
-        "dynamodb:GetItem",
-        "dynamodb:Query",
         "dynamodb:Scan"
       ]
       resources = [
-        module.dynamodb.table_arn,
-        "${module.dynamodb.table_arn}/index/*"
+        module.dynamodb.table_arn
       ]
     }
   ]
