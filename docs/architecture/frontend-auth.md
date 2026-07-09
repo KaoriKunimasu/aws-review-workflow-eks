@@ -1,5 +1,15 @@
 # Frontend Authentication
 
+> **EKS migration note:** this document was written for the original
+> Cognito + API Gateway deployment. The frontend still runs the Cognito
+> Hosted UI / PKCE login flow described below to obtain a token, but the
+> FastAPI backend on EKS does not verify that token at all: it trusts an
+> `X-User-Id` header (`app/api/deps.py`), which the frontend populates from
+> the client-decoded `sub` claim. There is no API Gateway JWT authorizer in
+> this deployment, and only `POST /reviews` even reads the header — the
+> other endpoints (`list_reviews`, `get_review`, `update_status`) accept no
+> identity at all. See `docs/adr/0002-eks-migration-strategy.md`.
+
 ## Overview
 
 The frontend authenticates users through the Cognito Hosted UI using the
@@ -34,8 +44,12 @@ This is accepted for this project because:
   dependency surface, limiting XSS vectors.
 - Tokens are short-lived; `getStoredSession` checks `expiresAt` on every read
   and discards expired sessions.
-- The token grants access only to this user's own request records, scoped by
-  the backend authorizer (see below).
+
+On EKS this trade-off is worse than it looks: the backend does not verify
+the token or scope access by owner at all (see the migration note above),
+so a stolen token — or simply any `X-User-Id` value a caller chooses to
+send — grants full read/write access to every request in the shared queue,
+not just the caller's own.
 
 A production hardening step would be to move tokens to `httpOnly`, `Secure`,
 `SameSite` cookies (eliminating script access) and pair them with CSRF
@@ -49,16 +63,19 @@ signature**. This is intentional and safe in this design: the decoded claims
 are used only for display purposes (e.g. showing the signed-in user). The
 browser never makes a trust decision based on these claims.
 
-All authorization is enforced server-side: every protected route sits behind
-the API Gateway JWT authorizer, which validates the token signature, issuer,
-and expiry against Cognito before any Lambda runs. A tampered token is
-rejected at the gateway regardless of what the client decoded.
+In the original Lambda/API Gateway deployment, authorization was enforced by
+the API Gateway JWT authorizer before any handler ran. **On EKS this layer
+does not exist.** The FastAPI app performs no signature, issuer, or expiry
+verification of any kind; `X-User-Id` is taken at face value. Wiring up real
+Cognito JWT verification in `app/api/deps.py` is a planned follow-up, not
+something already covered by a different layer.
 
 ## Summary
 
-| Concern            | Current approach                     | Production hardening                          |
-| ------------------ | ------------------------------------ | --------------------------------------------- |
-| Auth flow          | Authorization Code + PKCE (`S256`)   | unchanged                                     |
-| Token storage      | `localStorage`, expiry-checked       | `httpOnly` cookies + CSRF, or in-memory       |
-| JWT trust on client| decode-only, display use             | unchanged (authz stays server-side)           |
-| Authorization      | API Gateway JWT authorizer           | unchanged                                     |
+| Concern            | Current approach                                  | Production hardening                    |
+| ------------------ | -------------------------------------------------- | ---------------------------------------- |
+| Auth flow          | Authorization Code + PKCE (`S256`)                 | unchanged                                |
+| Token storage      | `localStorage`, expiry-checked                     | `httpOnly` cookies + CSRF, or in-memory  |
+| JWT trust on client| decode-only, display use                           | unchanged                                |
+| Authentication     | none — `X-User-Id` header taken at face value      | verify Cognito JWT in `app/api/deps.py`  |
+| Authorization      | none — shared queue, no owner scoping              | add per-owner/role-based access checks   |

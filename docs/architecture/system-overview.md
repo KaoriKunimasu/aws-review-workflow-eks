@@ -1,5 +1,15 @@
 # System Overview
 
+> **This document describes the original pre-migration (Lambda / API
+> Gateway / Cognito authorizer) architecture and is kept for historical
+> context.** This repository now runs the API as a FastAPI container on
+> EKS; see the top-level [README](../../README.md) for the current
+> architecture, and `docs/adr/0002-eks-migration-strategy.md` for what
+> changed and why. Notably, the S3/CloudFront frontend hosting, the
+> `get-profile` and `get-dashboard-summary` endpoints, SNS notifications,
+> and the GitHub Actions/OIDC deployment pipeline described below were
+> never built even in the original serverless version.
+
 ## Summary
 
 This repository contains a serverless web application for managing review requests for technical terms and related content.
