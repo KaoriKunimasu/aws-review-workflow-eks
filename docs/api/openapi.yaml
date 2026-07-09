@@ -1,56 +1,48 @@
 openapi: 3.0.3
 info:
   title: Review Workflow API
-  version: 0.1.0
-  description: Initial API contract for the review workflow application.
+  version: 1.0.0
+  description: >
+    FastAPI contract for the review workflow application running on EKS.
+    User identity is passed via the X-User-Id header, an interim stub for
+    Cognito JWT verification (see docs/architecture/frontend-auth.md).
 
 servers:
-  - url: https://api.example.com
-    description: Placeholder URL
+  - url: http://localhost:8080
+    description: Local (docker compose)
 
 tags:
-  - name: Auth
-  - name: Requests
-  - name: Dashboard
+  - name: Health
+  - name: Reviews
 
 paths:
-  /auth/profile:
+  /health:
     get:
       tags:
-        - Auth
-      summary: Get current user profile
-      operationId: getProfile
-      security:
-        - bearerAuth: []
+        - Health
+      summary: Health check used by the container HEALTHCHECK and Kubernetes probes
+      operationId: getHealth
       responses:
         '200':
-          description: Current user profile
+          description: Service is healthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileResponse'
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    example: ok
 
-  /requests:
+  /reviews:
     get:
       tags:
-        - Requests
+        - Reviews
       summary: List review requests
-      operationId: listRequests
-      security:
-        - bearerAuth: []
+      operationId: listReviews
       parameters:
-        - in: query
-          name: status
-          required: false
-          schema:
-            type: string
-            enum:
-              - draft
-              - submitted
-              - in_review
-              - approved
-              - rejected
-              - archived
         - in: query
           name: limit
           required: false
@@ -59,43 +51,54 @@ paths:
             default: 20
             minimum: 1
             maximum: 100
+        - in: query
+          name: cursor
+          required: false
+          schema:
+            type: string
+          description: Opaque pagination cursor returned by a previous call.
       responses:
         '200':
           description: List of review requests
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListRequestsResponse'
+                $ref: '#/components/schemas/ListReviewsResponse'
 
     post:
       tags:
-        - Requests
+        - Reviews
       summary: Create a review request
-      operationId: createRequest
-      security:
-        - bearerAuth: []
+      operationId: createReview
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: false
+          schema:
+            type: string
+          description: Interim identity stub; recorded as the item's createdBy.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateRequestInput'
+              $ref: '#/components/schemas/CreateReviewInput'
       responses:
         '201':
           description: Review request created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RequestResponse'
+                $ref: '#/components/schemas/ReviewResponse'
+        '422':
+          description: Validation failed
 
-  /requests/{requestId}:
+  /reviews/{requestId}:
     get:
       tags:
-        - Requests
+        - Reviews
       summary: Get a review request by ID
-      operationId: getRequest
-      security:
-        - bearerAuth: []
+      operationId: getReview
       parameters:
         - in: path
           name: requestId
@@ -108,18 +111,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RequestResponse'
+                $ref: '#/components/schemas/ReviewResponse'
         '404':
           description: Review request not found
 
-  /requests/{requestId}/status:
+  /reviews/{requestId}/status:
     patch:
       tags:
-        - Requests
-      summary: Update request status
-      operationId: updateRequestStatus
-      security:
-        - bearerAuth: []
+        - Reviews
+      summary: Update a review request's status and reviewer note
+      operationId: updateReviewStatus
       parameters:
         - in: path
           name: requestId
@@ -138,51 +139,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RequestResponse'
-
-  /dashboard/summary:
-    get:
-      tags:
-        - Dashboard
-      summary: Get dashboard summary
-      operationId: getDashboardSummary
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Dashboard summary
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DashboardSummaryResponse'
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Validation failed (unknown status)
+        '404':
+          description: Review request not found
 
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
   schemas:
-    ProfileResponse:
-      type: object
-      required:
-        - userId
-        - email
-        - role
-      properties:
-        userId:
-          type: string
-          example: user-123
-        email:
-          type: string
-          format: email
-          example: kaori@example.com
-        role:
-          type: string
-          example: requester
-
-    ReviewRequest:
+    ReviewItem:
       type: object
       required:
         - requestId
@@ -201,10 +166,7 @@ components:
           example: Review API terminology
         requestType:
           type: string
-          enum:
-            - term
-            - document
-            - change
+          example: term
         sourceLanguage:
           type: string
           example: en
@@ -223,12 +185,10 @@ components:
         status:
           type: string
           enum:
-            - draft
-            - submitted
-            - in_review
-            - approved
-            - rejected
-            - archived
+            - OPEN
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
         reviewerNote:
           type: string
           nullable: true
@@ -245,7 +205,7 @@ components:
           format: date-time
           example: 2026-06-01T10:00:00Z
 
-    CreateRequestInput:
+    CreateReviewInput:
       type: object
       required:
         - title
@@ -259,10 +219,7 @@ components:
           example: Review API Gateway terminology
         requestType:
           type: string
-          enum:
-            - term
-            - document
-            - change
+          example: term
         sourceLanguage:
           type: string
           example: en
@@ -278,6 +235,9 @@ components:
         category:
           type: string
           example: security
+        reviewerNote:
+          type: string
+          example: Approved after terminology review.
 
     UpdateStatusInput:
       type: object
@@ -287,59 +247,41 @@ components:
         status:
           type: string
           enum:
-            - draft
-            - submitted
-            - in_review
-            - approved
-            - rejected
-            - archived
+            - OPEN
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
         reviewerNote:
           type: string
           example: Approved after terminology review.
 
-    RequestResponse:
+    ReviewResponse:
       type: object
       required:
         - item
       properties:
+        message:
+          type: string
         item:
-          $ref: '#/components/schemas/ReviewRequest'
+          $ref: '#/components/schemas/ReviewItem'
 
-    ListRequestsResponse:
+    ListReviewsResponse:
       type: object
       required:
         - items
+        - count
+        - hasMore
       properties:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/ReviewRequest'
-
-    DashboardSummaryResponse:
-      type: object
-      required:
-        - total
-        - draft
-        - submitted
-        - inReview
-        - approved
-        - rejected
-      properties:
-        total:
+            $ref: '#/components/schemas/ReviewItem'
+        count:
           type: integer
-          example: 12
-        draft:
-          type: integer
-          example: 2
-        submitted:
-          type: integer
-          example: 3
-        inReview:
-          type: integer
-          example: 4
-        approved:
-          type: integer
-          example: 2
-        rejected:
-          type: integer
-          example: 1
+          example: 20
+        hasMore:
+          type: boolean
+        cursor:
+          type: string
+          nullable: true
+          description: Opaque pagination cursor. Pass back as the `cursor` query parameter to fetch the next page.
