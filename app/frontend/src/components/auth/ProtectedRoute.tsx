@@ -2,11 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 
 import { useAuth } from "../../app/providers/AuthProvider";
 
-type ProtectedRouteProps = {
-  children?: JSX.Element;
-};
-
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -17,5 +13,5 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  return children ?? <Outlet />;
+  return <Outlet />;
 }
