@@ -7,19 +7,19 @@ import type { WorkflowRequest } from "../types/request";
 
 function formatStatusLabel(status?: string): string {
   if (!status) {
-    return "submitted";
+    return "open";
   }
 
   return status.replaceAll("_", " ");
 }
 
 function normalizeStatus(status?: string): string {
-  return (status ?? "submitted").toLowerCase();
+  return (status ?? "open").toLowerCase();
 }
 
 export function RequestsPage() {
-  const { session } = useAuth();
-  const accessToken = session?.accessToken ?? "";
+  const { claims } = useAuth();
+  const userId = typeof claims.sub === "string" ? claims.sub : "";
 
   const [requests, setRequests] = useState<WorkflowRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const hasAccessToken = useMemo(() => accessToken.length > 0, [accessToken]);
+  const hasUserId = useMemo(() => userId.length > 0, [userId]);
 
   const filteredRequests = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -59,8 +59,8 @@ export function RequestsPage() {
   }, [requests, searchTerm, statusFilter]);
 
   const loadRequests = useCallback(async () => {
-    if (!hasAccessToken) {
-      setErrorMessage("Access token is missing. Please sign in again.");
+    if (!hasUserId) {
+      setErrorMessage("You must be signed in to view requests.");
       setLoading(false);
       return;
     }
@@ -69,7 +69,7 @@ export function RequestsPage() {
       setLoading(true);
       setErrorMessage("");
 
-      const response = await listRequests(accessToken);
+      const response = await listRequests(userId);
       setRequests(response.items);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -82,7 +82,7 @@ export function RequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, hasAccessToken]);
+  }, [userId, hasUserId]);
 
   useEffect(() => {
     void loadRequests();
@@ -113,8 +113,7 @@ export function RequestsPage() {
             onChange={(event) => setStatusFilter(event.target.value)}
           >
             <option value="all">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="submitted">Submitted</option>
+            <option value="open">Open</option>
             <option value="in_review">In Review</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>

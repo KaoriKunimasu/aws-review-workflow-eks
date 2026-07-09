@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../app/providers/AuthProvider";
@@ -29,9 +29,9 @@ function formatStatusLabel(status: string): string {
 
 export function RequestDetailPage() {
   const { requestId } = useParams();
-  const { session } = useAuth();
+  const { claims } = useAuth();
 
-  const accessToken = session?.accessToken ?? "";
+  const userId = typeof claims.sub === "string" ? claims.sub : "";
 
   const [request, setRequest] = useState<RequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,8 +60,8 @@ export function RequestDetailPage() {
         return;
       }
 
-      if (!accessToken) {
-        setErrorMessage("Access token is missing. Please sign in again.");
+      if (!userId) {
+        setErrorMessage("You must be signed in to view this request.");
         setLoading(false);
         return;
       }
@@ -72,7 +72,7 @@ export function RequestDetailPage() {
         setSuccessMessage("");
         setNotFound(false);
 
-        const item = await getRequestDetail(accessToken, requestId);
+        const item = await getRequestDetail(userId, requestId);
         setRequest(item);
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
@@ -90,7 +90,7 @@ export function RequestDetailPage() {
     }
 
     void loadRequestDetail();
-  }, [accessToken, requestId]);
+  }, [userId, requestId]);
 
   async function handleStatusUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -100,8 +100,8 @@ export function RequestDetailPage() {
       return;
     }
 
-    if (!accessToken) {
-      setErrorMessage("Access token is missing. Please sign in again.");
+    if (!userId) {
+      setErrorMessage("You must be signed in to update this request.");
       return;
     }
 
@@ -110,7 +110,7 @@ export function RequestDetailPage() {
       setErrorMessage("");
       setSuccessMessage("");
 
-      const response = await updateRequestStatus(accessToken, requestId, {
+      const response = await updateRequestStatus(userId, requestId, {
         status: selectedStatus,
         reviewerNote: reviewerNote.trim(),
       });

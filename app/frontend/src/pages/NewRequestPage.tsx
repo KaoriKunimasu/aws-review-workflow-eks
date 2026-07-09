@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../app/providers/AuthProvider";
@@ -7,9 +7,9 @@ import { createRequest } from "../lib/api/requests";
 
 export function NewRequestPage() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { claims } = useAuth();
 
-  const accessToken = session?.accessToken ?? "";
+  const userId = typeof claims.sub === "string" ? claims.sub : "";
 
   const [title, setTitle] = useState("");
   const [requestType, setRequestType] = useState("term");
@@ -24,8 +24,8 @@ export function NewRequestPage() {
 async function handleSubmit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault();
 
-  if (!accessToken) {
-    setErrorMessage("Access token is missing. Please sign in again.");
+  if (!userId) {
+    setErrorMessage("You must be signed in to submit a request.");
     return;
   }
 
@@ -33,7 +33,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     setSubmitting(true);
     setErrorMessage("");
 
-    await createRequest(accessToken, {
+    await createRequest(userId, {
       title: title.trim(),
       requestType,
       sourceLanguage: sourceLanguage.trim(),

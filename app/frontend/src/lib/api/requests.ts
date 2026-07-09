@@ -69,23 +69,11 @@ function normalizeListItem(value: unknown): WorkflowRequest {
   const source = isRecord(value) ? value : {};
 
   return {
-    requestId: readString(
-      source.requestId ?? source.id ?? source.PK ?? source.request_id,
-      "unknown-request-id",
-    ),
+    requestId: readString(source.requestId, "unknown-request-id"),
     title: readString(source.title, "Untitled request"),
-    description: readString(
-      source.description ?? source.sourceText ?? source.body,
-      "",
-    ),
-    sourceLanguage: readString(
-      source.sourceLanguage ?? source.source_language,
-      "ja",
-    ),
-    targetLanguage: readString(
-      source.targetLanguage ?? source.target_language,
-      "en",
-    ),
+    description: readString(source.sourceText, ""),
+    sourceLanguage: readString(source.sourceLanguage, "ja"),
+    targetLanguage: readString(source.targetLanguage, "en"),
     status: readOptionalString(source.status),
     createdAt: readString(source.createdAt, new Date(0).toISOString()),
     createdBy: readOptionalString(source.createdBy),
@@ -131,6 +119,7 @@ function normalizeListResponse(value: unknown): ListRequestsResponse {
       items,
       count: readNumber(value.count, items.length),
       hasMore: readBoolean(value.hasMore, false),
+      cursor: readOptionalString(value.cursor),
     };
   }
 
@@ -176,23 +165,23 @@ function normalizeUpdateResponse(value: unknown): UpdateRequestStatusResponse {
 }
 
 export async function listRequests(
-  accessToken: string,
+  userId: string,
 ): Promise<ListRequestsResponse> {
-  const response = await apiFetch<unknown>("/requests", {
+  const response = await apiFetch<unknown>("/reviews", {
     method: "GET",
-    accessToken,
+    userId,
   });
 
   return normalizeListResponse(response);
 }
 
 export async function createRequest(
-  accessToken: string,
+  userId: string,
   payload: CreateRequestPayload,
 ): Promise<CreateRequestResponse> {
-  const response = await apiFetch<unknown>("/requests", {
+  const response = await apiFetch<unknown>("/reviews", {
     method: "POST",
-    accessToken,
+    userId,
     body: payload,
   });
 
@@ -200,25 +189,25 @@ export async function createRequest(
 }
 
 export async function getRequestDetail(
-  accessToken: string,
+  userId: string,
   requestId: string,
 ): Promise<RequestDetail> {
-  const response = await apiFetch<unknown>(`/requests/${requestId}`, {
+  const response = await apiFetch<unknown>(`/reviews/${requestId}`, {
     method: "GET",
-    accessToken,
+    userId,
   });
 
   return normalizeDetailResponse(response);
 }
 
 export async function updateRequestStatus(
-  accessToken: string,
+  userId: string,
   requestId: string,
   payload: UpdateRequestStatusPayload,
 ): Promise<UpdateRequestStatusResponse> {
-  const response = await apiFetch<unknown>(`/requests/${requestId}/status`, {
+  const response = await apiFetch<unknown>(`/reviews/${requestId}/status`, {
     method: "PATCH",
-    accessToken,
+    userId,
     body: payload,
   });
 

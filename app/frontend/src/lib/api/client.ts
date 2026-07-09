@@ -6,7 +6,7 @@ if (!apiBaseUrl) {
 
 type ApiFetchOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  accessToken?: string;
+  userId?: string;
   body?: unknown;
   signal?: AbortSignal;
 };
@@ -71,7 +71,7 @@ export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {},
 ): Promise<T> {
-  const { method = "GET", accessToken, body, signal } = options;
+  const { method = "GET", userId, body, signal } = options;
 
   const headers: HeadersInit = {
     Accept: "application/json",
@@ -81,8 +81,8 @@ export async function apiFetch<T>(
     headers["Content-Type"] = "application/json";
   }
 
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
+  if (userId) {
+    headers["X-User-Id"] = userId;
   }
 
   const response = await fetch(buildUrl(path), {
