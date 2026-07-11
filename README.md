@@ -48,6 +48,7 @@ aws-review-workflow-eks/
 ├─ docs/
 │  ├─ adr/          # architecture decision records
 │  ├─ runbooks/     # operational procedures
+│  ├─ demo/eks/     # screenshots of the EKS deployment running
 │  └─ diagrams/     # architecture diagrams
 └─ .github/workflows/  # CI
 ```
@@ -117,6 +118,20 @@ terraform destroy
 ```
 
 > See `docs/runbooks/` for operational procedures (rollout, rollback, image-pull failures, IRSA troubleshooting, teardown).
+
+## Demo
+
+Nodes and Pods running on the provisioned EKS cluster:
+
+![Nodes and Pods running](docs/demo/eks/01-nodes-and-pods.png)
+
+IRSA verified from inside the Pod — the ServiceAccount's role-arn annotation and the actual STS identity the container assumes (account ID redacted):
+
+![IRSA verification](docs/demo/eks/02-irsa-verification.png)
+
+Health check and a live `/reviews` call against the Pod through a port-forward:
+
+![Health check and API check](docs/demo/eks/03-health-and-api-check.png)
 
 ## Security
 
