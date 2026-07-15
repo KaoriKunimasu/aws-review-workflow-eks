@@ -55,3 +55,7 @@ infra/environments/dev/*.zip
 *.tfvars
 *.tfvars.json
 !*.tfvars.example
+
+docs/build/
+.venv/
+documentation-file-inventory.txt

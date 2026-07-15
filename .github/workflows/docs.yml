@@ -1,0 +1,29 @@
+name: Docs
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+
+jobs:
+  build:
+    name: Build Sphinx documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r docs/requirements.txt
+
+      - name: Build documentation
+        run: python -m sphinx -M html docs/source docs/build -W
