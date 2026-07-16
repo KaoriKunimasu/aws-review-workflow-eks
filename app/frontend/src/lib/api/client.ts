@@ -1,3 +1,5 @@
+import { getStoredSession } from "../auth/session";
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 if (!apiBaseUrl) {
@@ -6,7 +8,6 @@ if (!apiBaseUrl) {
 
 type ApiFetchOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  userId?: string;
   body?: unknown;
   signal?: AbortSignal;
 };
@@ -71,7 +72,7 @@ export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {},
 ): Promise<T> {
-  const { method = "GET", userId, body, signal } = options;
+  const { method = "GET", body, signal } = options;
 
   const headers: HeadersInit = {
     Accept: "application/json",
@@ -81,8 +82,10 @@ export async function apiFetch<T>(
     headers["Content-Type"] = "application/json";
   }
 
-  if (userId) {
-    headers["X-User-Id"] = userId;
+  const session = getStoredSession();
+
+  if (session) {
+    headers["Authorization"] = `Bearer ${session.accessToken}`;
   }
 
   const response = await fetch(buildUrl(path), {

@@ -33,7 +33,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     setSubmitting(true);
     setErrorMessage("");
 
-    await createRequest(userId, {
+    await createRequest({
       title: title.trim(),
       requestType,
       sourceLanguage: sourceLanguage.trim(),

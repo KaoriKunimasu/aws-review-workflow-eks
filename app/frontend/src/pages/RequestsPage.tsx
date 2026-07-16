@@ -69,7 +69,7 @@ export function RequestsPage() {
       setLoading(true);
       setErrorMessage("");
 
-      const response = await listRequests(userId);
+      const response = await listRequests();
       setRequests(response.items);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -82,7 +82,7 @@ export function RequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [userId, hasUserId]);
+  }, [hasUserId]);
 
   useEffect(() => {
     void loadRequests();

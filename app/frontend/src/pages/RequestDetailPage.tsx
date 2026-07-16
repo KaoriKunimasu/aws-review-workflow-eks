@@ -72,7 +72,7 @@ export function RequestDetailPage() {
         setSuccessMessage("");
         setNotFound(false);
 
-        const item = await getRequestDetail(userId, requestId);
+        const item = await getRequestDetail(requestId);
         setRequest(item);
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
@@ -110,7 +110,7 @@ export function RequestDetailPage() {
       setErrorMessage("");
       setSuccessMessage("");
 
-      const response = await updateRequestStatus(userId, requestId, {
+      const response = await updateRequestStatus(requestId, {
         status: selectedStatus,
         reviewerNote: reviewerNote.trim(),
       });
