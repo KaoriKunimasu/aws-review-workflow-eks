@@ -75,9 +75,8 @@ variable "enable_deletion_protection" {
 }
 
 variable "pre_token_generation_lambda_arn" {
-  description = "ARN of a Pre Token Generation (V2_0) Lambda trigger. Leave empty to skip wiring the trigger and the reviewer group's Lambda invoke permission."
+  description = "ARN of the Pre Token Generation (V2_0) Lambda trigger that copies group membership onto the access token."
   type        = string
-  default     = ""
 }
 
 variable "tags" {
