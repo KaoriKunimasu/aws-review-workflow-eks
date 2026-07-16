@@ -120,7 +120,7 @@ EKS is not serverless: the control plane, the node group, and the NAT gateway al
 
 ## Known limitations
 
-- Reads and submitting a request aren't scoped by owner. Any authenticated account can see and create requests in the shared queue. Only status changes are gated by reviewer group membership (see Security considerations above).
+- Nothing is scoped by owner. Reads and submissions are open to any signed-in account, and status changes to any reviewer, regardless of who filed the request (see Security considerations above).
 - The frontend still shows approve/reject controls to non-reviewers. Clicking gets a `403`. Backend enforcement is correct regardless.
 - Nobody gets into the `reviewer` group automatically. Every reviewer, including the first one, has to be added manually via the Cognito console or CLI.
 - The Service is `ClusterIP` only. There's no Ingress or LoadBalancer, so nothing is reachable from outside the cluster without a `kubectl port-forward`.

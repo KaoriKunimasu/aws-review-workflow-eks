@@ -58,12 +58,12 @@ This is accepted for this project because:
   and discards expired sessions.
 
 On EKS this trade-off still matters. The backend now verifies the token, so
-a caller can no longer fabricate an identity — but a *stolen* token from a
-reviewer account still grants full approve/reject access to every request in
-the shared queue, not just the victim's own, since there is no per-owner
-scoping (see the migration note above). A short-lived token in `localStorage`
-remains a real exposure for reviewer accounts specifically, until token
-storage is hardened.
+a caller can no longer fabricate an identity. What a stolen token buys an
+attacker depends on whose it is: any token lets them read and create
+requests, and a reviewer's token lets them approve or reject every request
+in the queue, since nothing scopes a reviewer to their own filings. So a
+short-lived token in `localStorage` is a real exposure, and most so for
+reviewer accounts, until token storage is hardened.
 
 A production hardening step would be to move tokens to `httpOnly`, `Secure`,
 `SameSite` cookies (eliminating script access) and pair them with CSRF
