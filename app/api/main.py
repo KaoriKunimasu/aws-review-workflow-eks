@@ -19,7 +19,8 @@ async def service_error_handler(request, exc: service.ServiceError):
 
 @app.get("/health")
 def health():
-    # Used by container HEALTHCHECK and (later) Kubernetes probes.
+    # Used by container HEALTHCHECK and Kubernetes probes. Deliberately
+    # unauthenticated so readiness/liveness checks don't need credentials.
     return {"status": "ok"}
 
 
@@ -36,16 +37,24 @@ def create_review(
 def list_reviews(
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
+    user_id: str = Depends(get_current_user_id),
 ):
     return service.list_reviews(limit, cursor)
 
 
 @app.get("/reviews/{request_id}")
-def get_review(request_id: str):
+def get_review(
+    request_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
     return {"item": service.get_review(request_id)}
 
 
 @app.patch("/reviews/{request_id}/status")
-def update_status(request_id: str, payload: UpdateStatusRequest):
+def update_status(
+    request_id: str,
+    payload: UpdateStatusRequest,
+    user_id: str = Depends(get_current_user_id),
+):
     item = service.update_status(request_id, payload.model_dump())
     return {"message": "Workflow request status updated successfully.", "item": item}
