@@ -58,7 +58,31 @@ resource "aws_cognito_user_pool" "this" {
     default_email_option = "CONFIRM_WITH_CODE"
   }
 
+  lambda_config {
+    pre_token_generation_config {
+      lambda_arn     = var.pre_token_generation_lambda_arn
+      lambda_version = "V2_0"
+    }
+  }
+
   tags = var.tags
+}
+
+# Membership gates PATCH /reviews/{id}/status in the API — see
+# app/api/deps.py:require_reviewer. Submitting a request needs no group;
+# only authentication.
+resource "aws_cognito_user_group" "reviewer" {
+  name         = "reviewer"
+  user_pool_id = aws_cognito_user_pool.this.id
+  description  = "Members may approve or reject review requests."
+}
+
+resource "aws_lambda_permission" "pre_token_generation" {
+  statement_id  = "AllowCognitoInvokePreTokenGeneration"
+  action        = "lambda:InvokeFunction"
+  function_name = var.pre_token_generation_lambda_arn
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.this.arn
 }
 
 resource "aws_cognito_user_pool_client" "this" {

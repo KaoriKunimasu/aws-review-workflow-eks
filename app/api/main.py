@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, Query
 from fastapi.responses import JSONResponse
 
 from app.api import service
-from app.api.deps import get_current_user_id
+from app.api.deps import get_current_user_id, require_reviewer
 from app.api.schemas import CreateReviewRequest, UpdateStatusRequest
 
 app = FastAPI(title="Review Workflow API", version="1.0.0")
@@ -54,7 +54,7 @@ def get_review(
 def update_status(
     request_id: str,
     payload: UpdateStatusRequest,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(require_reviewer),
 ):
     item = service.update_status(request_id, payload.model_dump())
     return {"message": "Workflow request status updated successfully.", "item": item}

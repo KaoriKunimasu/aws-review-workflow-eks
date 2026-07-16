@@ -63,6 +63,10 @@ function getErrorMessage(details: unknown, fallbackMessage: string): string {
     if (typeof record.error === "string" && record.error.trim().length > 0) {
       return record.error;
     }
+
+    if (typeof record.detail === "string" && record.detail.trim().length > 0) {
+      return record.detail;
+    }
   }
 
   return fallbackMessage;

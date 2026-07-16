@@ -11,10 +11,16 @@
 > gone. `AUTH_MODE=none` (local development only) skips verification and
 > returns a fixed placeholder identity.
 >
-> **Authentication is now enforced; authorization is still not.** All review
-> endpoints operate on a single shared queue with no owner scoping, so any
-> authenticated user can read and modify every request, not just their own.
-> See `docs/adr/0002-eks-migration-strategy.md`.
+> **Authentication is enforced; authorization is partial.** Submitting,
+> listing, and reading requests only require a valid token — this is a
+> shared review queue, so any authenticated user can see and create requests
+> in it. Changing a request's status additionally requires membership in the
+> Cognito `reviewer` group, checked in `app/api/deps.py:require_reviewer`, so
+> an authenticated non-reviewer cannot approve or reject anything, including
+> their own submission. There is still no per-owner scoping on reads, and no
+> bootstrap path into the reviewer group — membership is granted manually.
+> See `docs/adr/0002-eks-migration-strategy.md` and
+> `docs/adr/0005-reviewer-group-authorization.md`.
 
 ## Overview
 
@@ -52,11 +58,12 @@ This is accepted for this project because:
   and discards expired sessions.
 
 On EKS this trade-off still matters. The backend now verifies the token, so
-a caller can no longer fabricate an identity — but there is no owner scoping
-(see the migration note above), so a *stolen* token grants full read/write
-access to every request in the shared queue, not just the victim's own. A
-short-lived token in `localStorage` remains a real exposure until token
-storage is hardened and per-owner authorization is added.
+a caller can no longer fabricate an identity — but a *stolen* token from a
+reviewer account still grants full approve/reject access to every request in
+the shared queue, not just the victim's own, since there is no per-owner
+scoping (see the migration note above). A short-lived token in `localStorage`
+remains a real exposure for reviewer accounts specifically, until token
+storage is hardened.
 
 A production hardening step would be to move tokens to `httpOnly`, `Secure`,
 `SameSite` cookies (eliminating script access) and pair them with CSRF
@@ -74,9 +81,10 @@ In the original Lambda/API Gateway deployment, token verification was enforced
 by the API Gateway JWT authorizer before any handler ran. **On EKS that layer
 does not exist**, so the equivalent check now lives in the app:
 `app/api/deps.py` verifies the Cognito access token (signature, issuer,
-expiry) and derives identity from its `sub` claim. This is authentication
-only — it proves *who* the caller is; it does not restrict *what* they may
-act on, which is still unscoped (see the migration note).
+expiry) and derives identity from its `sub` claim. Proving identity is
+authentication; deciding what that identity may do is authorization, and
+only the status-change endpoint checks the latter, via the token's `groups`
+claim (see the migration note).
 
 ## Summary
 
@@ -86,4 +94,4 @@ act on, which is still unscoped (see the migration note).
 | Token storage      | `localStorage`, expiry-checked                     | `httpOnly` cookies + CSRF, or in-memory  |
 | JWT trust on client| decode-only, display use                           | unchanged                                |
 | Authentication     | Cognito access token verified in `app/api/deps.py` | unchanged                                |
-| Authorization      | none — shared queue, no owner scoping              | add per-owner/role-based access checks   |
+| Authorization      | status changes require `reviewer` group; reads/create are unscoped | add per-owner scoping on reads |

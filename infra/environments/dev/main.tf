@@ -21,17 +21,19 @@ locals {
     create_request        = module.create_request_function.function_name
     get_request_detail    = module.get_request_detail_function.function_name
     update_request_status = module.update_request_status_function.function_name
+    pre_token_generation  = module.pre_token_generation_function.function_name
   }
 }
 
 module "cognito" {
   source = "../../modules/cognito"
 
-  name_prefix   = local.name_prefix
-  callback_urls = var.cognito_callback_urls
-  logout_urls   = var.cognito_logout_urls
-  domain_prefix = var.cognito_domain_prefix
-  tags          = local.common_tags
+  name_prefix                     = local.name_prefix
+  callback_urls                   = var.cognito_callback_urls
+  logout_urls                     = var.cognito_logout_urls
+  domain_prefix                   = var.cognito_domain_prefix
+  pre_token_generation_lambda_arn = module.pre_token_generation_function.function_arn
+  tags                            = local.common_tags
 }
 
 module "dynamodb" {
@@ -71,6 +73,12 @@ data "archive_file" "update_request_status" {
   type        = "zip"
   source_dir  = "${local.function_dist_root}/update_request_status"
   output_path = "${path.module}/update_request_status.zip"
+}
+
+data "archive_file" "pre_token_generation" {
+  type        = "zip"
+  source_dir  = "${local.function_dist_root}/pre_token_generation"
+  output_path = "${path.module}/pre_token_generation.zip"
 }
 
 module "list_requests_function" {
@@ -237,6 +245,33 @@ module "update_request_status_function" {
     local.common_tags,
     {
       Component = "update-request-status"
+    }
+  )
+}
+
+module "pre_token_generation_function" {
+  source = "../../modules/lambda-function"
+
+  function_name    = "${local.name_prefix}-pre-token-generation"
+  description      = "Copies Cognito group membership onto the access token."
+  runtime          = var.lambda_runtime
+  handler          = "handler.lambda_handler"
+  package_file     = data.archive_file.pre_token_generation.output_path
+  source_code_hash = data.archive_file.pre_token_generation.output_base64sha256
+
+  memory_size   = var.lambda_memory_size
+  timeout       = var.lambda_timeout_seconds
+  architectures = var.lambda_architectures
+
+  log_retention_in_days = var.lambda_log_retention_in_days
+  log_format            = "JSON"
+  application_log_level = var.lambda_log_level
+  system_log_level      = "INFO"
+
+  tags = merge(
+    local.common_tags,
+    {
+      Component = "pre-token-generation"
     }
   )
 }

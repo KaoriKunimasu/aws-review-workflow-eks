@@ -74,6 +74,11 @@ variable "enable_deletion_protection" {
   default     = false
 }
 
+variable "pre_token_generation_lambda_arn" {
+  description = "ARN of the Pre Token Generation (V2_0) Lambda trigger that copies group membership onto the access token."
+  type        = string
+}
+
 variable "tags" {
   description = "Tags applied to Cognito resources."
   type        = map(string)
