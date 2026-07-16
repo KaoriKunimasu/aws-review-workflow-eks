@@ -10,8 +10,13 @@ This document describes how Lambda function source files are prepared for zip-ba
 app/functions/
 ├─ shared/
 ├─ list_requests/
-└─ create_request/
+├─ create_request/
+├─ get_request_detail/
+├─ update_request_status/
+└─ pre_token_generation/
 ```
+
+The first four are the original handlers behind the HTTP API. `pre_token_generation` is a Cognito trigger rather than an API route; it puts group membership on the access token, and `docs/adr/0005-reviewer-group-authorization.md` covers why.
 
 ## Packaging Goal
 
@@ -26,9 +31,12 @@ app/functions/.dist/
 ├─ list_requests/
 │  ├─ handler.py
 │  └─ shared/
-└─ create_request/
-   ├─ handler.py
-   └─ shared/
+├─ create_request/
+│  ├─ handler.py
+│  └─ shared/
+├─ get_request_detail/
+├─ update_request_status/
+└─ pre_token_generation/
 ```
 
 ## Build Command
@@ -44,19 +52,21 @@ python scripts/package_lambda_functions.py
 - Copies `requirements.txt` when present
 - Copies the shared helper package into each function package
 
-## Terraform Integration Plan
+The function list is hardcoded at the top of the script, so a new function has to be added there before it gets packaged.
 
-A later infrastructure PR will package each directory under `.dist` as a zip archive and pass it to the Lambda module.
+## Terraform Integration
 
-The expected Lambda handler value will be:
+Each function has an `archive_file` data source in `infra/environments/dev/main.tf` that zips its `.dist` directory and hands the result to the `lambda-function` module. The handler value is:
 
 ```
 handler.lambda_handler
 ```
 
+The four API functions are wired to HTTP API routes with a Cognito JWT authorizer in front. The pre-token-generation function is attached to the user pool instead, in the `cognito` module.
+
+Run the packaging script before `terraform plan` or `apply`. Everything under `.dist` is gitignored, so on a fresh checkout there's nothing for `archive_file` to read and the plan fails.
+
 ## Current Limitations
 
-- Dependency installation is not implemented yet
-- Zip archive creation is not implemented yet
-- Terraform wiring is not implemented yet
-- API Gateway integration is not implemented yet
+- Dependency installation is not implemented. Every `requirements.txt` here is empty right now, since the handlers only use `boto3` and the Lambda runtime already ships it. A function with real dependencies would need this filled in first.
+- `shared/` gets copied into every package, including `pre_token_generation`, which never imports it. It's dead weight in the archive, nothing more.
