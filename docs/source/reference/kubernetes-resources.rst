@@ -82,7 +82,7 @@ Service
 ConfigMap
 ----------
 
-``review-api-config`` (``k8s/base/configmap.yaml``) carries three non-secret values, and a comment in the file is explicit that they need to match ``infra/environments/dev``:
+``review-api-config`` (``k8s/base/configmap.yaml``) carries six non-secret values, and comments in the file are explicit that they need to match ``infra/environments/dev``:
 
 .. list-table::
    :header-rows: 1
@@ -95,6 +95,14 @@ ConfigMap
      - ``ap-southeast-2``
    * - ``LOG_LEVEL``
      - ``INFO``
+   * - ``AUTH_MODE``
+     - ``cognito`` (verify a Cognito access token on every request; ``none`` disables verification, local dev only)
+   * - ``COGNITO_USER_POOL_ID``
+     - ``terraform output cognito_user_pool_id``
+   * - ``COGNITO_CLIENT_ID``
+     - ``terraform output cognito_client_id``
+
+The pool ID and client ID are not secrets, but they are environment-specific: with ``AUTH_MODE=cognito`` the app fails at startup if either is missing (``app/api/config.py``).
 
 ServiceAccount
 ---------------

@@ -4,12 +4,19 @@ info:
   version: 1.0.0
   description: >
     FastAPI contract for the review workflow application running on EKS.
-    User identity is passed via the X-User-Id header, an interim stub for
-    Cognito JWT verification (see docs/architecture/frontend-auth.md).
+    Every endpoint except /health requires a valid Cognito access token in
+    the `Authorization: Bearer <token>` header; the API verifies the token
+    and derives the caller's identity from its `sub` claim
+    (see docs/architecture/frontend-auth.md). Note that authentication only
+    proves who the caller is — the endpoints do not scope data by owner, so
+    any authenticated user can read and modify any request.
 
 servers:
   - url: http://localhost:8080
     description: Local (docker compose)
+
+security:
+  - bearerAuth: []
 
 tags:
   - name: Health
@@ -22,6 +29,7 @@ paths:
         - Health
       summary: Health check used by the container HEALTHCHECK and Kubernetes probes
       operationId: getHealth
+      security: []
       responses:
         '200':
           description: Service is healthy
@@ -70,13 +78,6 @@ paths:
         - Reviews
       summary: Create a review request
       operationId: createReview
-      parameters:
-        - in: header
-          name: X-User-Id
-          required: false
-          schema:
-            type: string
-          description: Interim identity stub; recorded as the item's createdBy.
       requestBody:
         required: true
         content:
@@ -146,6 +147,12 @@ paths:
           description: Review request not found
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Cognito access token; verified server-side in app/api/deps.py.
   schemas:
     ReviewItem:
       type: object

@@ -1,7 +1,10 @@
 # 0002. EKS migration strategy: keep business logic, swap the transport layer
 
 ## Status
-Accepted
+Accepted. **Update:** the "defer real Cognito JWT verification / X-User-Id
+stub" point below has since been implemented — `app/api/deps.py` now verifies
+the Cognito access token and the `X-User-Id` stub is removed. The rest of the
+decision stands. Authorization (per-owner scoping) remains unaddressed.
 
 ## Context
 The original app runs as four AWS Lambda handlers behind API Gateway (HTTP API)

@@ -23,7 +23,7 @@ Five actions, scoped to the workflow table and its indexes: ``GetItem``, ``Query
 Where this doesn't help
 ---------------------------
 
-IRSA scopes what the *Pod* can do against AWS. It says nothing about who can call the *API* in the first place. As covered in :doc:`migrating-from-lambda-to-eks`, the FastAPI app trusts an ``X-User-Id`` header without verifying it, and three of the four endpoints don't check it at all. A caller who can reach the Service can create, list, and update any workflow request. The IRSA role being narrowly scoped doesn't change that, because the request never has to prove who's making it. These are two separate layers, and locking down one didn't touch the other.
+IRSA scopes what the *Pod* can do against AWS. It says nothing about which *user's data* an authenticated API caller may touch. As covered in :doc:`migrating-from-lambda-to-eks`, the FastAPI app now verifies a Cognito access token on every endpoint, so a caller must prove *who* they are — but there is no owner scoping, so any authenticated user can create, list, and update *any* workflow request, not just their own. The IRSA role being narrowly scoped doesn't change that: authentication and per-owner authorization are separate layers, and neither IRSA nor token verification closes the authorization gap.
 
 How this was verified
 ------------------------

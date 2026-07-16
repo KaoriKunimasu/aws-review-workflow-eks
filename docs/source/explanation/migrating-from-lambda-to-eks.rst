@@ -13,7 +13,7 @@ Swapping the transport layer
 
 API Gateway's event parsing, the Lambda proxy response shape, and the JWT authorizer are gone. In their place: a FastAPI app with Pydantic request models, dependency injection, and exception handlers. The four Lambda handlers became four route functions calling the same service layer.
 
-One thing changed in a way that matters more than the others. Real Cognito JWT verification was not carried over. See :doc:`workload-access-with-irsa` for how DynamoDB access is now secured — that part improved. Verifying who's calling the API in the first place did not; it's covered in the Kubernetes-resources reference and in the README's security notes, not glossed over here.
+One thing was initially left out and later restored. Real Cognito JWT verification was not carried over in the first cut of the migration; the app briefly trusted an ``X-User-Id`` header stub. That gap has since been closed: ``app/api/deps.py`` now verifies the Cognito access token (with ``AUTH_MODE=cognito``) and derives the caller's identity from its ``sub`` claim. What remains open is *authorization* — there is still no per-owner scoping, so any authenticated caller can act on any request. See :doc:`workload-access-with-irsa` for how DynamoDB access is scoped, the Kubernetes-resources reference for the auth-related config, and the README's security notes.
 
 Trade-offs that came with the move
 --------------------------------------
