@@ -7,9 +7,11 @@ info:
     Every endpoint except /health requires a valid Cognito access token in
     the `Authorization: Bearer <token>` header; the API verifies the token
     and derives the caller's identity from its `sub` claim
-    (see docs/architecture/frontend-auth.md). Note that authentication only
-    proves who the caller is — the endpoints do not scope data by owner, so
-    any authenticated user can read and modify any request.
+    (see docs/architecture/frontend-auth.md). Submitting, listing, and
+    reading requests only require a valid token — any authenticated user can
+    see and create requests in the shared queue. Updating a request's status
+    additionally requires membership in the Cognito `reviewer` group; see
+    docs/adr/0005-reviewer-group-authorization.md.
 
 servers:
   - url: http://localhost:8080
@@ -121,6 +123,7 @@ paths:
       tags:
         - Reviews
       summary: Update a review request's status and reviewer note
+      description: Requires membership in the Cognito `reviewer` group, in addition to a valid access token.
       operationId: updateReviewStatus
       parameters:
         - in: path
@@ -141,6 +144,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReviewResponse'
+        '403':
+          description: Caller is authenticated but not a member of the reviewer group
         '400':
           description: Validation failed (unknown status)
         '404':
