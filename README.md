@@ -107,11 +107,12 @@ Health check and a live `/reviews` call against the Pod through a port-forward:
 
 ## Security considerations
 
-- **Authentication is enforced.** Every route except `/health` requires a valid Cognito access token in the `Authorization: Bearer <token>` header. The API verifies the token's signature against Cognito's published JWKS, checks the issuer and expiry, and confirms it was issued for this app client (`app/api/auth.py`). A request with no token, an expired token, or a token from a different Cognito app client is rejected with `401` before it reaches any business logic.
-- **Approving or rejecting a request requires the `reviewer` Cognito group.** Submitting a request, listing the queue, and reading a single request only require authentication — this is a shared review queue, not a private inbox, so any signed-in account can see what's in it. But changing a request's status (`PATCH /reviews/{id}/status`) additionally requires group membership, checked in `app/api/deps.py:require_reviewer`. Without this, anyone with an account (self-service sign-up is on) could approve their own submission. The group membership itself travels on the Cognito access token via a Pre Token Generation trigger (`app/functions/pre_token_generation`), since access tokens don't carry group claims by default. See `docs/adr/0005-reviewer-group-authorization.md` for the reasoning and what's deliberately still open (e.g. reviewers can approve their own submissions; there's no bootstrap flow for the first reviewer, group membership is granted manually).
-- **DynamoDB access is scoped independently.** The Pod authenticates to DynamoDB through IRSA, not the node's IAM role, and the attached policy only grants `GetItem`/`Query`/`Scan`/`PutItem`/`UpdateItem` on this table. This layer was already correctly scoped before the authentication work above; the two are unrelated mechanisms and were verified separately.
-- Local development runs with `AUTH_MODE=none`: a fixed placeholder identity, no header, no token, nothing to configure. This only applies to `docker compose`; the Kubernetes ConfigMap for EKS sets `AUTH_MODE=cognito`, and the API refuses to start under that mode without `COGNITO_USER_POOL_ID` and `COGNITO_CLIENT_ID` configured.
-- No long-lived AWS credentials are stored in this repository. The container runs as a non-root user.
+- **Every route except `/health` needs a valid Cognito access token** in the `Authorization: Bearer <token>` header. `app/api/auth.py` checks the signature against Cognito's JWKS and confirms the token hasn't expired and was issued for this app client. Anything else gets a `401` before it touches business logic.
+- **Approving or rejecting a request needs the `reviewer` Cognito group**, not just a token. Anyone signed in can submit, list, and read requests, since it's a shared queue.
+- **Status changes go through `require_reviewer`** in `app/api/deps.py`. Cognito doesn't put group membership on access tokens by default, so there's a small Pre Token Generation Lambda (`app/functions/pre_token_generation`) that adds it. Details in `docs/adr/0005-reviewer-group-authorization.md`.
+- **DynamoDB access is separate from all this.** IRSA gives the Pod its own IAM role instead of the node's, scoped to `GetItem`/`Query`/`Scan`/`PutItem`/`UpdateItem` on this table. That was already right before any of the Cognito work above.
+- Local dev runs with `AUTH_MODE=none`, a fixed placeholder identity with no token needed. That's just `docker compose` though; EKS sets `AUTH_MODE=cognito` and the API won't start without `COGNITO_USER_POOL_ID` and `COGNITO_CLIENT_ID`.
+- No long-lived AWS credentials live in this repository. The container runs as a non-root user.
 
 ## Cost considerations
 
@@ -119,9 +120,9 @@ EKS is not serverless: the control plane, the node group, and the NAT gateway al
 
 ## Known limitations
 
-- Reads (list/detail) and submitting a request have no owner scoping: any authenticated account can see and create requests in the shared queue. Only status changes are gated by reviewer group membership (see Security considerations above).
-- The frontend doesn't hide the approve/reject controls from non-reviewers; a non-reviewer sees them and gets a `403` on click. Enforcement is correct either way, this is a UX gap, not a security one.
-- No bootstrap path into the `reviewer` group — the first (and every) reviewer has to be added manually via the Cognito console or CLI.
+- Reads and submitting a request aren't scoped by owner. Any authenticated account can see and create requests in the shared queue. Only status changes are gated by reviewer group membership (see Security considerations above).
+- The frontend still shows approve/reject controls to non-reviewers. Clicking gets a `403`. Backend enforcement is correct regardless.
+- Nobody gets into the `reviewer` group automatically. Every reviewer, including the first one, has to be added manually via the Cognito console or CLI.
 - The Service is `ClusterIP` only. There's no Ingress or LoadBalancer, so nothing is reachable from outside the cluster without a `kubectl port-forward`.
 - No remote Terraform backend is configured; state is local unless someone sets one up.
 - The EKS Terraform module is pinned to the v20.x line to avoid an AWS provider major-version upgrade across the whole stack, including the untouched serverless resources (`docs/adr/0004-terraform-version-constraints-and-ci.md`).
