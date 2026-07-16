@@ -1,14 +1,20 @@
 # Frontend Authentication
 
 > **EKS migration note:** this document was written for the original
-> Cognito + API Gateway deployment. The frontend still runs the Cognito
-> Hosted UI / PKCE login flow described below to obtain a token, but the
-> FastAPI backend on EKS does not verify that token at all: it trusts an
-> `X-User-Id` header (`app/api/deps.py`), which the frontend populates from
-> the client-decoded `sub` claim. There is no API Gateway JWT authorizer in
-> this deployment, and only `POST /reviews` even reads the header — the
-> other endpoints (`list_reviews`, `get_review`, `update_status`) accept no
-> identity at all. See `docs/adr/0002-eks-migration-strategy.md`.
+> Cognito + API Gateway deployment, where an API Gateway JWT authorizer
+> verified tokens before any handler ran. That authorizer does not exist on
+> EKS, so the verification was moved into the app: with `AUTH_MODE=cognito`,
+> `app/api/deps.py` now verifies the Cognito access token sent in the
+> `Authorization: Bearer` header and derives the caller's identity from its
+> verified `sub` claim. The frontend sends that token on every API call
+> (`app/frontend/src/lib/api/client.ts`); the old `X-User-Id` header stub is
+> gone. `AUTH_MODE=none` (local development only) skips verification and
+> returns a fixed placeholder identity.
+>
+> **Authentication is now enforced; authorization is still not.** All review
+> endpoints operate on a single shared queue with no owner scoping, so any
+> authenticated user can read and modify every request, not just their own.
+> See `docs/adr/0002-eks-migration-strategy.md`.
 
 ## Overview
 
@@ -45,11 +51,12 @@ This is accepted for this project because:
 - Tokens are short-lived; `getStoredSession` checks `expiresAt` on every read
   and discards expired sessions.
 
-On EKS this trade-off is worse than it looks: the backend does not verify
-the token or scope access by owner at all (see the migration note above),
-so a stolen token — or simply any `X-User-Id` value a caller chooses to
-send — grants full read/write access to every request in the shared queue,
-not just the caller's own.
+On EKS this trade-off still matters. The backend now verifies the token, so
+a caller can no longer fabricate an identity — but there is no owner scoping
+(see the migration note above), so a *stolen* token grants full read/write
+access to every request in the shared queue, not just the victim's own. A
+short-lived token in `localStorage` remains a real exposure until token
+storage is hardened and per-owner authorization is added.
 
 A production hardening step would be to move tokens to `httpOnly`, `Secure`,
 `SameSite` cookies (eliminating script access) and pair them with CSRF
@@ -63,12 +70,13 @@ signature**. This is intentional and safe in this design: the decoded claims
 are used only for display purposes (e.g. showing the signed-in user). The
 browser never makes a trust decision based on these claims.
 
-In the original Lambda/API Gateway deployment, authorization was enforced by
-the API Gateway JWT authorizer before any handler ran. **On EKS this layer
-does not exist.** The FastAPI app performs no signature, issuer, or expiry
-verification of any kind; `X-User-Id` is taken at face value. Wiring up real
-Cognito JWT verification in `app/api/deps.py` is a planned follow-up, not
-something already covered by a different layer.
+In the original Lambda/API Gateway deployment, token verification was enforced
+by the API Gateway JWT authorizer before any handler ran. **On EKS that layer
+does not exist**, so the equivalent check now lives in the app:
+`app/api/deps.py` verifies the Cognito access token (signature, issuer,
+expiry) and derives identity from its `sub` claim. This is authentication
+only — it proves *who* the caller is; it does not restrict *what* they may
+act on, which is still unscoped (see the migration note).
 
 ## Summary
 
@@ -77,5 +85,5 @@ something already covered by a different layer.
 | Auth flow          | Authorization Code + PKCE (`S256`)                 | unchanged                                |
 | Token storage      | `localStorage`, expiry-checked                     | `httpOnly` cookies + CSRF, or in-memory  |
 | JWT trust on client| decode-only, display use                           | unchanged                                |
-| Authentication     | none — `X-User-Id` header taken at face value      | verify Cognito JWT in `app/api/deps.py`  |
+| Authentication     | Cognito access token verified in `app/api/deps.py` | unchanged                                |
 | Authorization      | none — shared queue, no owner scoping              | add per-owner/role-based access checks   |
