@@ -1,34 +1,32 @@
 # Review Workflow on Amazon EKS
 
-An internal workflow application for technical terminology and document review.
-The API originally ran as AWS Lambda functions behind API Gateway; this repository migrates that API to a containerized service running on Amazon EKS, while keeping the existing DynamoDB single-table data model and business logic unchanged.
+**Status:** Active. Runs locally via Docker Compose and has been deployed to a real EKS cluster for validation (see Demo below); not intended for production traffic as-is (see Known limitations).
 
-## What this project is
+An internal tool for reviewing technical terminology and documents. The API originally ran as AWS Lambda functions behind API Gateway; this repository moves that API onto a containerized service on Amazon EKS, while keeping the existing DynamoDB single-table model and business logic unchanged.
 
-This is a migration of an existing serverless API onto Kubernetes. The goal was to run the same workflow on EKS without rewriting the domain logic:
+## What this project does
 
-- The create/list/get/update logic was extracted from the Lambda handlers into a transport-agnostic service layer and exposed through a FastAPI app.
-- Only the transport layer changed: API Gateway event parsing and the Cognito JWT authorizer were replaced with FastAPI request models, dependencies, and an exception handler.
-- The DynamoDB single-table model (PK/SK, `REQUEST#{id}` / `METADATA`) is reused as-is.
+Reviewers submit terminology or document review requests, track them through a workflow status (`OPEN`, `IN_REVIEW`, `APPROVED`, `REJECTED`), and update that status as review happens. The domain logic was extracted from the original Lambda handlers into a transport-agnostic service layer (`app/api/service.py`) and is now exposed through FastAPI instead of API Gateway. The DynamoDB table, its `PK`/`SK` key schema, and the workflow logic itself are unchanged from the original implementation.
 
-The original serverless infrastructure (Cognito, API Gateway, Lambda) still lives in `app/functions/` and `infra/` as the starting point of the migration.
+The original serverless stack (Cognito, API Gateway, Lambda, the React/Vite frontend) still lives in this repository, in `app/functions/` and `app/frontend/`, and is not removed by this migration. `docs/adr/0002-eks-migration-strategy.md` covers what moved and what stayed.
 
 ## Architecture
 
-The API runs as a Deployment on EKS managed node groups, fronted by a Service, configured via a ConfigMap, and authenticated to DynamoDB through IRSA (a dedicated least-privilege IAM role per Pod, assumed via the cluster OIDC provider). Infrastructure (VPC, EKS, ECR, IRSA) is provisioned with Terraform.
+The API runs as a Deployment on EKS managed node groups, fronted by a ClusterIP Service, configured through a ConfigMap, and authenticated to DynamoDB through IRSA: a dedicated IAM role per Pod, assumed via the cluster's OIDC provider rather than the node's IAM role. Requests to the API itself are authenticated separately, by verifying a Cognito access token (see Security considerations). Infrastructure (VPC, EKS, ECR, IRSA) is provisioned with Terraform.
 
 ![EKS architecture diagram](diagrams/eks-architecture.png)
 
-## Tech stack
+## Technology stack
 
-- Python / FastAPI (API)
-- Docker (multi-stage, non-root image)
+- Python / FastAPI (containerized API)
+- Docker (multi-stage build, non-root runtime user)
 - Amazon EKS (managed node groups)
 - Amazon ECR (image registry)
-- Amazon DynamoDB (single-table model)
+- Amazon Cognito (access token issuance, verified at the API)
+- Amazon DynamoDB (single-table model, unchanged from the original design)
 - Terraform (VPC, EKS, ECR, IRSA)
 - Kustomize (base + EKS overlay)
-- GitHub Actions (build and validation CI)
+- GitHub Actions (build and validation CI, plus documentation publishing — see Validation below)
 
 ## Repository structure
 
@@ -36,24 +34,25 @@ The API runs as a Deployment on EKS managed node groups, fronted by a Service, c
 aws-review-workflow-eks/
 ├─ app/
 │  ├─ api/          # FastAPI service (containerized API)
-│  └─ functions/    # original Lambda handlers (migration source)
+│  ├─ functions/    # original Lambda handlers (migration source)
+│  └─ frontend/     # React/Vite frontend (Cognito Hosted UI login)
 ├─ k8s/
 │  ├─ base/         # Deployment, Service, ConfigMap, ServiceAccount
-│  └─ overlays/eks/ # ECR image + IRSA role-arn annotation
+│  └─ overlays/eks/ # ECR image reference + IRSA role-arn annotation
 ├─ infra/
 │  ├─ modules/      # reusable Terraform modules
-│  └─ environments/dev/  # EKS, ECR, IRSA, plus original serverless resources
+│  └─ environments/dev/  # EKS, ECR, IRSA, plus the original serverless resources
 ├─ scripts/         # local helpers (DynamoDB Local table creation)
-├─ tests/           # service and API tests
+├─ tests/           # service, API, and auth tests
 ├─ docs/
+│  ├─ source/       # Sphinx documentation (tutorials, how-to, reference, explanation)
 │  ├─ adr/          # architecture decision records
-│  ├─ runbooks/     # operational procedures
-│  ├─ demo/eks/     # screenshots of the EKS deployment running
+│  ├─ demo/eks/     # screenshots from a live EKS deployment
 │  └─ diagrams/     # architecture diagrams
-└─ .github/workflows/  # CI
+└─ .github/workflows/  # CI and documentation publishing
 ```
 
-## Local development
+## Quick start
 
 Run the API and DynamoDB Local with Docker Compose:
 
@@ -65,6 +64,8 @@ curl localhost:8080/reviews
 docker compose down
 ```
 
+Local development runs with `AUTH_MODE=none`, so no token is needed for these commands. On EKS, every route except `/health` requires a valid Cognito access token in the `Authorization` header.
+
 Run the tests:
 
 ```bash
@@ -72,52 +73,16 @@ pip install -r requirements-dev.txt
 pytest -q
 ```
 
-## Deploying to EKS
+Deploying to EKS, rolling back a version, or debugging a failing Pod involves more than fits here; see the guides linked below.
 
-Provision the infrastructure (creates billable resources):
+## Documentation
 
-```bash
-cd infra/environments/dev
-terraform init
-terraform plan
-terraform apply
-```
+Full documentation — tutorials, how-to guides, reference, and the reasoning behind the EKS migration — is published from this repository with Sphinx: **[review-workflow-eks docs](https://kaorikunimasu.github.io/aws-review-workflow-eks/)**.
 
-Point kubectl at the new cluster and confirm the nodes are ready:
-
-```bash
-aws eks update-kubeconfig --region ap-southeast-2 --name review-workflow-dev
-kubectl get nodes
-```
-
-Build and push the image, then deploy:
-
-```bash
-docker build --platform linux/amd64 -t <ecr-repo-url>:v1 .
-docker push <ecr-repo-url>:v1
-kubectl apply -k k8s/overlays/eks
-kubectl rollout status deployment/review-api
-```
-
-Verify, including DynamoDB access via IRSA:
-
-```bash
-kubectl exec deploy/review-api -- \
-  python -c "import boto3; print(boto3.client('sts').get_caller_identity()['Arn'])"
-kubectl port-forward svc/review-api 8080:80
-# in another shell:
-curl localhost:8080/health
-curl localhost:8080/reviews
-```
-
-Tear everything down when finished:
-
-```bash
-cd infra/environments/dev
-terraform destroy
-```
-
-> See `docs/runbooks/` for operational procedures (rollout, rollback, image-pull failures, IRSA troubleshooting, teardown).
+- [Run the service locally](docs/source/tutorials/run-the-service-locally.rst)
+- [Deploy an application version](docs/source/how-to/deploy-an-application-version.rst)
+- [Roll back a deployment](docs/source/how-to/roll-back-an-application-deployment.rst)
+- [Migrating from Lambda to EKS](docs/source/explanation/migrating-from-lambda-to-eks.rst)
 
 ## Demo
 
@@ -125,7 +90,7 @@ Nodes and Pods running on the provisioned EKS cluster:
 
 ![Nodes and Pods running](docs/demo/eks/01-nodes-and-pods.png)
 
-IRSA verified from inside the Pod — the ServiceAccount's role-arn annotation and the actual STS identity the container assumes (account ID redacted):
+IRSA verified from inside the Pod: the ServiceAccount's role-arn annotation and the actual STS identity the container assumes (account ID redacted).
 
 ![IRSA verification](docs/demo/eks/02-irsa-verification.png)
 
@@ -133,21 +98,28 @@ Health check and a live `/reviews` call against the Pod through a port-forward:
 
 ![Health check and API check](docs/demo/eks/03-health-and-api-check.png)
 
-## Security
+## Validation performed
 
-- Per-Pod least-privilege IAM via IRSA; the Pod does not borrow the node role.
-- No long-lived AWS credentials in source control.
-- Container runs as a non-root user.
-- Cognito JWT verification is stubbed at the FastAPI boundary (`app/api/deps.py`) and isolated so it can be wired up without touching the domain logic.
+- Local: Docker Compose against DynamoDB Local, and a local Kubernetes cluster (`kind`).
+- Live: deployed to a real EKS cluster provisioned by the Terraform in this repository. IRSA identity, health checks, and API calls were all verified against that deployment (see Demo above).
+- CI (`.github/workflows/ci.yml`, `.github/workflows/docs.yml`): runs `pytest` (including Cognito token verification tests), a Docker build, `terraform fmt`/`validate`, a `kustomize build` of the EKS overlay, and a Sphinx documentation build and publish on every pull request. CI does not apply Terraform, push images, or apply Kubernetes manifests; those steps are manual and documented in the how-to guides above.
 
-## Cost
+## Security considerations
 
-EKS is not serverless, so it has an always-on baseline cost (control plane, node group, NAT gateway). The dev environment is provisioned with Terraform and destroyed after validation to avoid ongoing charges. The serverless vs. EKS trade-off is documented in `docs/adr/`.
+- **Authentication is enforced.** Every route except `/health` requires a valid Cognito access token in the `Authorization: Bearer <token>` header. The API verifies the token's signature against Cognito's published JWKS, checks the issuer and expiry, and confirms it was issued for this app client (`app/api/auth.py`). A request with no token, an expired token, or a token from a different Cognito app client is rejected with `401` before it reaches any business logic.
+- **Authorization is not.** Once a token verifies, its `sub` claim is trusted as the caller's identity, but nothing scopes what that identity can see. Any authenticated user can list, read, and update any workflow request, not just their own. Fixing this means adding an owner attribute to each item and filtering queries by it — a data model change, not an auth change, and it hasn't been made yet.
+- **DynamoDB access is scoped independently.** The Pod authenticates to DynamoDB through IRSA, not the node's IAM role, and the attached policy only grants `GetItem`/`Query`/`Scan`/`PutItem`/`UpdateItem` on this table. This layer was already correctly scoped before the authentication work above; the two are unrelated mechanisms and were verified separately.
+- Local development runs with `AUTH_MODE=none`: a fixed placeholder identity, no header, no token, nothing to configure. This only applies to `docker compose`; the Kubernetes ConfigMap for EKS sets `AUTH_MODE=cognito`, and the API refuses to start under that mode without `COGNITO_USER_POOL_ID` and `COGNITO_CLIENT_ID` configured.
+- No long-lived AWS credentials are stored in this repository. The container runs as a non-root user.
 
-## Status
+## Cost considerations
 
-- [x] Containerized FastAPI API with the original DynamoDB model
-- [x] Local Kubernetes validation (kind)
-- [x] Terraform-provisioned EKS, ECR, VPC, IRSA
-- [x] Deployed to EKS with IRSA-backed DynamoDB access
-- [x] Build and validation CI (pytest, docker build, terraform validate, kustomize)
+EKS is not serverless: the control plane, the node group, and the NAT gateway all run continuously regardless of traffic, unlike the original Lambda-based deployment's per-invocation billing. The dev environment here is provisioned with Terraform and torn down (`terraform destroy`) after each round of validation specifically to avoid an ongoing bill. `docs/source/explanation/serverless-and-kubernetes-trade-offs.rst` covers where that trade-off does and doesn't pay off.
+
+## Known limitations
+
+- No authorization scoping: any authenticated user can access any workflow request (see Security considerations above).
+- The Service is `ClusterIP` only. There's no Ingress or LoadBalancer, so nothing is reachable from outside the cluster without a `kubectl port-forward`.
+- No remote Terraform backend is configured; state is local unless someone sets one up.
+- The EKS Terraform module is pinned to the v20.x line to avoid an AWS provider major-version upgrade across the whole stack, including the untouched serverless resources (`docs/adr/0004-terraform-version-constraints-and-ci.md`).
+- A single NAT gateway is used to control dev cost. It's a single point of failure, not a highly-available configuration (`docs/adr/0003-eks-cluster-topology.md`).

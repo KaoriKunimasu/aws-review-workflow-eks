@@ -7,3 +7,8 @@ data:
   WORKFLOW_TABLE_NAME: "review-workflow-dev-workflow"
   AWS_REGION: "ap-southeast-2"
   LOG_LEVEL: "INFO"
+  # Cognito verification. Values must match `terraform output cognito_user_pool_id`
+  # and `terraform output cognito_client_id` in infra/environments/dev.
+  AUTH_MODE: "cognito"
+  COGNITO_USER_POOL_ID: "<terraform output cognito_user_pool_id>"
+  COGNITO_CLIENT_ID: "<terraform output cognito_client_id>"
