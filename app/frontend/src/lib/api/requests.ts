@@ -164,24 +164,19 @@ function normalizeUpdateResponse(value: unknown): UpdateRequestStatusResponse {
   };
 }
 
-export async function listRequests(
-  userId: string,
-): Promise<ListRequestsResponse> {
+export async function listRequests(): Promise<ListRequestsResponse> {
   const response = await apiFetch<unknown>("/reviews", {
     method: "GET",
-    userId,
   });
 
   return normalizeListResponse(response);
 }
 
 export async function createRequest(
-  userId: string,
   payload: CreateRequestPayload,
 ): Promise<CreateRequestResponse> {
   const response = await apiFetch<unknown>("/reviews", {
     method: "POST",
-    userId,
     body: payload,
   });
 
@@ -189,25 +184,21 @@ export async function createRequest(
 }
 
 export async function getRequestDetail(
-  userId: string,
   requestId: string,
 ): Promise<RequestDetail> {
   const response = await apiFetch<unknown>(`/reviews/${requestId}`, {
     method: "GET",
-    userId,
   });
 
   return normalizeDetailResponse(response);
 }
 
 export async function updateRequestStatus(
-  userId: string,
   requestId: string,
   payload: UpdateRequestStatusPayload,
 ): Promise<UpdateRequestStatusResponse> {
   const response = await apiFetch<unknown>(`/reviews/${requestId}/status`, {
     method: "PATCH",
-    userId,
     body: payload,
   });
 
