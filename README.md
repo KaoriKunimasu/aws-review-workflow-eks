@@ -6,7 +6,7 @@ An internal tool for reviewing technical terminology and documents. The API orig
 
 ## What this project does
 
-Reviewers submit terminology or document review requests, track them through a workflow status (`OPEN`, `IN_REVIEW`, `APPROVED`, `REJECTED`), and update that status as review happens. The domain logic was extracted from the original Lambda handlers into a transport-agnostic service layer (`app/api/service.py`) and is now exposed through FastAPI instead of API Gateway. The DynamoDB table, its `PK`/`SK` key schema, and the workflow logic itself are unchanged from the original implementation.
+Anyone signed in can submit a terminology or document review request. It then moves through a workflow status (`OPEN`, `IN_REVIEW`, `APPROVED`, `REJECTED`) as members of the `reviewer` Cognito group approve or reject it. The domain logic was extracted from the original Lambda handlers into a transport-agnostic service layer (`app/api/service.py`) and is now exposed through FastAPI instead of API Gateway. The DynamoDB table, its `PK`/`SK` key schema, and the workflow logic itself are unchanged from the original implementation.
 
 The original serverless stack (Cognito, API Gateway, Lambda, the React/Vite frontend) still lives in this repository, in `app/functions/` and `app/frontend/`, and is not removed by this migration. `docs/adr/0002-eks-migration-strategy.md` covers what moved and what stayed.
 
@@ -34,7 +34,7 @@ The API runs as a Deployment on EKS managed node groups, fronted by a ClusterIP 
 aws-review-workflow-eks/
 ├─ app/
 │  ├─ api/          # FastAPI service (containerized API)
-│  ├─ functions/    # original Lambda handlers (migration source)
+│  ├─ functions/    # original Lambda handlers (migration source), plus the Cognito pre-token-generation trigger
 │  └─ frontend/     # React/Vite frontend (Cognito Hosted UI login)
 ├─ k8s/
 │  ├─ base/         # Deployment, Service, ConfigMap, ServiceAccount
@@ -102,6 +102,7 @@ Health check and a live `/reviews` call against the Pod through a port-forward:
 
 - Local: Docker Compose against DynamoDB Local, and a local Kubernetes cluster (`kind`).
 - Live: deployed to a real EKS cluster provisioned by the Terraform in this repository. IRSA identity, health checks, and API calls were all verified against that deployment (see Demo above).
+- Reviewer-group authorization was checked against a real Cognito user pool: created a reviewer and a non-reviewer test account, confirmed the `groups` claim on each access token, and confirmed `PATCH /reviews/{id}/status` returns `403` for the non-reviewer and passes auth for the reviewer. Resources were torn down afterward.
 - CI (`.github/workflows/ci.yml`, `.github/workflows/docs.yml`): runs `pytest` (including Cognito token verification tests), a Docker build, `terraform fmt`/`validate`, a `kustomize build` of the EKS overlay, and a Sphinx documentation build and publish on every pull request. CI does not apply Terraform, push images, or apply Kubernetes manifests; those steps are manual and documented in the how-to guides above.
 
 ## Security considerations
