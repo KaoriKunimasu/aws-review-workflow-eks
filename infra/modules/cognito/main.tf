@@ -12,10 +12,11 @@ terraform {
 data "aws_region" "current" {}
 
 locals {
-  module_name           = "cognito"
-  user_pool_name        = "${var.name_prefix}-users"
-  user_pool_client_name = "${var.name_prefix}-web"
-  create_domain         = var.domain_prefix != ""
+  module_name               = "cognito"
+  user_pool_name            = "${var.name_prefix}-users"
+  user_pool_client_name     = "${var.name_prefix}-web"
+  create_domain             = var.domain_prefix != ""
+  wire_pre_token_generation = var.pre_token_generation_lambda_arn != ""
 
   issuer_url = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.this.id}"
 
@@ -58,7 +59,37 @@ resource "aws_cognito_user_pool" "this" {
     default_email_option = "CONFIRM_WITH_CODE"
   }
 
+  dynamic "lambda_config" {
+    for_each = local.wire_pre_token_generation ? [1] : []
+
+    content {
+      pre_token_generation_config {
+        lambda_arn     = var.pre_token_generation_lambda_arn
+        lambda_version = "V2_0"
+      }
+    }
+  }
+
   tags = var.tags
+}
+
+# Membership gates PATCH /reviews/{id}/status in the API — see
+# app/api/deps.py:require_reviewer. Submitting a request needs no group;
+# only authentication.
+resource "aws_cognito_user_group" "reviewer" {
+  name         = "reviewer"
+  user_pool_id = aws_cognito_user_pool.this.id
+  description  = "Members may approve or reject review requests."
+}
+
+resource "aws_lambda_permission" "pre_token_generation" {
+  count = local.wire_pre_token_generation ? 1 : 0
+
+  statement_id  = "AllowCognitoInvokePreTokenGeneration"
+  action        = "lambda:InvokeFunction"
+  function_name = var.pre_token_generation_lambda_arn
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.this.arn
 }
 
 resource "aws_cognito_user_pool_client" "this" {

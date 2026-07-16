@@ -74,6 +74,12 @@ variable "enable_deletion_protection" {
   default     = false
 }
 
+variable "pre_token_generation_lambda_arn" {
+  description = "ARN of a Pre Token Generation (V2_0) Lambda trigger. Leave empty to skip wiring the trigger and the reviewer group's Lambda invoke permission."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags applied to Cognito resources."
   type        = map(string)

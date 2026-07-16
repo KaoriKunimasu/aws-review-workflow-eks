@@ -52,3 +52,8 @@ output "token_endpoint" {
   description = "Hosted UI token endpoint, if a domain is created."
   value       = local.hosted_ui_base_url != null ? "${local.hosted_ui_base_url}/oauth2/token" : null
 }
+
+output "reviewer_group_name" {
+  description = "Name of the Cognito user group required to approve/reject requests."
+  value       = aws_cognito_user_group.reviewer.name
+}

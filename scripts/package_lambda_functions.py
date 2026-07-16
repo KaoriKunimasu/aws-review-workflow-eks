@@ -12,6 +12,7 @@ FUNCTION_NAMES = [
     "create_request",
     "get_request_detail",
     "update_request_status",
+    "pre_token_generation",
 ]
 
 
