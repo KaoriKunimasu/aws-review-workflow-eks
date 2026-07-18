@@ -47,8 +47,8 @@ aws-review-workflow-eks/
 ├─ docs/
 │  ├─ source/       # Sphinx documentation (tutorials, how-to, reference, explanation)
 │  ├─ adr/          # architecture decision records
-│  ├─ demo/eks/     # screenshots from a live EKS deployment
-│  └─ diagrams/     # architecture diagrams
+│  └─ demo/eks/     # screenshots from a live EKS deployment
+├─ diagrams/        # architecture diagrams
 └─ .github/workflows/  # CI and documentation publishing
 ```
 
@@ -103,7 +103,7 @@ Health check and a live `/reviews` call against the Pod through a port-forward:
 - Local: Docker Compose against DynamoDB Local, and a local Kubernetes cluster (`kind`).
 - Live: deployed to a real EKS cluster provisioned by the Terraform in this repository. IRSA identity, health checks, and API calls were all verified against that deployment (see Demo above).
 - Reviewer-group authorization was checked against a real Cognito user pool: created a reviewer and a non-reviewer test account, confirmed the `groups` claim on each access token, and confirmed `PATCH /reviews/{id}/status` returns `403` for the non-reviewer and passes auth for the reviewer. Resources were torn down afterward.
-- CI (`.github/workflows/ci.yml`, `.github/workflows/docs.yml`): runs `pytest` (including Cognito token verification tests), a Docker build, `terraform fmt`/`validate`, a `kustomize build` of the EKS overlay, and a Sphinx documentation build and publish on every pull request. CI does not apply Terraform, push images, or apply Kubernetes manifests; those steps are manual and documented in the how-to guides above.
+- CI on every pull request (`.github/workflows/ci.yml`): `pytest` (including Cognito token verification tests), a Docker build, `terraform fmt`/`validate`, and a `kustomize build` of the EKS overlay. Documentation is built with Sphinx on pull requests that touch `docs/`, and published to GitHub Pages on merge to `main` (`.github/workflows/docs.yml`). CI does not apply Terraform, push images, or apply Kubernetes manifests; those steps are manual and documented in the how-to guides above.
 
 ## Security considerations
 

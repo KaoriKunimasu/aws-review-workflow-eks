@@ -4,11 +4,13 @@
 Accepted
 
 ## Context
-A generic CRUD application does not provide enough surface area to demonstrate
-infrastructure design, security patterns, or operational practices in a meaningful way.
+A plain CRUD app has too little going on to justify real infrastructure, auth,
+and operational tooling. The domain needs enough structure to warrant those
+choices.
 
-A domain with structured lifecycle states, user roles, and audit requirements
-is better suited for showcasing serverless architecture and workflow automation.
+Technical terminology and document review fits. Requests move through defined
+states (open, in review, approved, rejected), submitters and reviewers are
+separate roles, and who changed a request's status needs to be traceable.
 
 ## Decision
 The project will be a cloud-first internal workflow platform on AWS for technical
@@ -43,7 +45,7 @@ The project will prioritize:
 ## Consequences
 ### Positive
 - Domain complexity justifies the use of structured workflow states and role-based access
-- Serverless and IaC patterns map naturally to the domain requirements
+- Serverless and IaC patterns fit the domain without forcing
 
 ### Negative
 - Domain is narrow enough that some AWS services have limited justification at MVP scale
