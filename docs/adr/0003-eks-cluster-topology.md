@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-The containerized review API needs a Kubernetes platform. The cluster must be 
+The containerised review API needs a Kubernetes platform. The cluster must be 
 reproducible, low-cost for a dev/demo environment, use current AWS-recommended
 access control, and not disturb the existing serverless resources in this
 environment.

@@ -2,7 +2,7 @@
 
 **Status:** Active. Runs locally via Docker Compose and has been deployed to a real EKS cluster for validation (see Demo below); not intended for production traffic as-is (see Known limitations).
 
-An internal tool for reviewing technical terminology and documents. The API originally ran as AWS Lambda functions behind API Gateway; this repository moves that API onto a containerized service on Amazon EKS, while keeping the existing DynamoDB single-table model and business logic unchanged.
+An internal tool for reviewing technical terminology and documents. The API originally ran as AWS Lambda functions behind API Gateway; this repository moves that API onto a containerised service on Amazon EKS, while keeping the existing DynamoDB single-table model and business logic unchanged.
 
 ## What this project does
 
@@ -18,7 +18,7 @@ The API runs as a Deployment on EKS managed node groups, fronted by a ClusterIP 
 
 ## Technology stack
 
-- Python / FastAPI (containerized API)
+- Python / FastAPI (containerised API)
 - Docker (multi-stage build, non-root runtime user)
 - Amazon EKS (managed node groups)
 - Amazon ECR (image registry)
@@ -33,7 +33,7 @@ The API runs as a Deployment on EKS managed node groups, fronted by a ClusterIP 
 ```text
 aws-review-workflow-eks/
 ├─ app/
-│  ├─ api/          # FastAPI service (containerized API)
+│  ├─ api/          # FastAPI service (containerised API)
 │  ├─ functions/    # original Lambda handlers (migration source), plus the Cognito pre-token-generation trigger
 │  └─ frontend/     # React/Vite frontend (Cognito Hosted UI login)
 ├─ k8s/

@@ -35,7 +35,7 @@ A third decision concerns what CI should do: full deploy vs. validation only.
    providers, which are declared in `versions.tf`.
 
 2. **Remove the cross-variable validations from the api module.** The dropped
-   checks were convenience guards; the actual behavior (only creating the JWT
+   checks were convenience guards; the actual behaviour (only creating the JWT
    authorizer and its requirements when enabled) is enforced by the conditional
    logic in `main.tf`. Self-referential validations are retained.
 
