@@ -16,7 +16,7 @@ separate roles, and who changed a request's status needs to be traceable.
 The project will be a cloud-first internal workflow platform on AWS for technical
 terminology and document review.
 
-The project will prioritize:
+The project will prioritise:
 - Terraform-based infrastructure
 - AWS serverless architecture
 - Secure authentication and authorization

@@ -80,7 +80,7 @@ Continuous integration
 
 - ``python`` installs dependencies and runs ``pytest -q``.
 - ``docker`` builds the image (``docker build -t review-api:ci .``) but never pushes it anywhere.
-- ``terraform`` runs ``fmt -check -recursive`` and ``validate``, initialized with ``-backend=false`` so it doesn't need AWS credentials or a configured backend to pass.
+- ``terraform`` runs ``fmt -check -recursive`` and ``validate``, initialised with ``-backend=false`` so it doesn't need AWS credentials or a configured backend to pass.
 - ``kustomize`` runs ``kubectl kustomize k8s/overlays/eks`` to confirm the overlay builds — not that it applies cleanly to a live cluster.
 
 None of these jobs touch AWS. Deployment is a separate, manual step, covered in the How-to guides.
